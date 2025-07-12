@@ -1,0 +1,6 @@
+openai
+fastapi
+uvicorn
+# sqlite3
+python-dotenv
+langchain
