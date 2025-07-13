@@ -1,0 +1,21 @@
+# Ignorer les fichiers d'environnement
+.env
+.env.*
+
+# Ignorer les environnements virtuels
+env/
+venv/
+env_dlux/
+
+# Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code
+.vscode/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
