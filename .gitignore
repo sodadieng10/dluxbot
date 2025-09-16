@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environnement virtuel
+envdlux/
+
+
+# Données locales
+app/data/*.csv
+
+# Secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>DLUXBOT — Recommandations Produits</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#0b1220; --card:#121a2b;
+      --blue:#1e3a8a; --blue2:#2563eb; --text:#e5e7eb;
+      --muted:#94a3b8; --accent:#60a5fa; --danger:#ef4444;
+      --shadow:0 10px 30px rgba(0,0,0,.35); --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+      display:flex; flex-direction:column;
+    }
+    header{
+      background:linear-gradient(90deg,var(--blue) 0%, var(--blue2) 100%);
+      padding:16px 18px; display:flex; align-items:center; gap:12px;
+      position:sticky; top:0; z-index:10; box-shadow:var(--shadow);
+    }
+    header .logo{
+      width:34px; height:34px; border-radius:50%;
+      background:#111827 url("robot.jpg") center/cover no-repeat;
+      border:2px solid rgba(255,255,255,.35);
+    }
+    header h1{margin:0; font-size:20px; font-weight:800; letter-spacing:.2px;}
+    header .actions{margin-left:auto; display:flex; gap:12px}
+    header .btn{background:rgba(255,255,255,.12); color:#fff; border:none; cursor:pointer;
+      padding:9px 14px; border-radius:10px; font-weight:600;}
+    header .btn:hover{background:rgba(255,255,255,.18)}
+
+    .main{flex:1; display:grid; grid-template-columns:310px 1fr; gap:16px; padding:16px; min-height:0}
+    .sidebar{background:var(--panel); border-radius:var(--radius); padding:14px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--shadow);}
+    .sidebar h3{margin:0 0 6px 4px; font-size:16px; color:#fff}
+    .convos{flex:1; overflow:auto; display:flex; flex-direction:column; gap:8px}
+    .convo{background:#0f1a2f; border:1px solid #1f2a44; color:#cbd5e1;
+      border-radius:12px; padding:10px 12px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;}
+    .convo.active{border-color:var(--accent); outline:2px solid rgba(96,165,250,.25)}
+    .convo small{display:block; color:var(--muted)}
+    .trash{background:transparent; border:none; color:#93a6c8; font-size:16px; cursor:pointer;}
+    .trash:hover{color:#e2e8f0}
+    .new{margin-top:auto; background:var(--blue2); color:#fff; border:none; padding:12px; border-radius:12px; font-weight:700; cursor:pointer;}
+    .new:hover{filter:brightness(1.05)}
+
+    .chat{background:#0d1424; border-radius:var(--radius); padding:16px; display:flex; flex-direction:column; min-height:0; box-shadow:var(--shadow);}
+    .stream{flex:1; overflow:auto; padding:8px; display:flex; flex-direction:column; gap:14px}
+    .msg{display:flex; gap:10px; align-items:flex-start;}
+    .avatar{width:40px; height:40px; border-radius:50%; flex:0 0 40px; border:2px solid rgba(255,255,255,.15)}
+    .bot .avatar{background:url("robot.jpg") center/cover}
+    .user .avatar{background:url("user.jpg") center/cover}
+    .bubble{background:linear-gradient(180deg,#123061,#0f2446); border:1px solid #20355b; border-radius:14px; padding:14px 16px; max-width:780px;
+      line-height:1.55; color:#e6edf6; box-shadow:var(--shadow);}
+    .user .bubble{background:#121a2b; border-color:#1f2a44; color:#e5e7eb;}
+    .bubble :is(h1,h2,h3){margin:.2rem 0 .6rem; font-size:1.05rem}
+    .bubble p{margin:.35rem 0}
+    .bubble ul{margin:.25rem 0 .25rem 1.1rem}
+    .bubble li{margin:.12rem 0}
+    .bubble strong, .bubble b{color:#fff}
+    .bubble a{color:var(--accent)}
+    .typing{opacity:.7; font-style:italic}
+
+    .composer{display:flex; gap:10px; padding-top:10px; border-top:1px solid #1f2a44;}
+    .composer input{flex:1; padding:14px 14px; background:#0f1a2f; border:1px solid #203055; color:#e5e7eb; border-radius:12px; outline:none;}
+    .composer button{background:var(--blue2); color:#fff; border:none; padding:12px 18px; border-radius:12px; font-weight:700; cursor:pointer;}
+    .composer button:hover{filter:brightness(1.05)}
+
+    @media (max-width: 980px){ .main{grid-template-columns:1fr} .sidebar{order:2} }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="logo"></div>
+  <h1>DLUXBOT — Recommandations Produits</h1>
+  <div class="actions">
+    <button class="btn" id="exportBtn">Exporter</button>
+    <button class="btn" id="clearBtn">Effacer tout</button>
+  </div>
+</header>
+
+<main class="main">
+  <aside class="sidebar">
+    <h3>Conversations</h3>
+    <div class="convos" id="convos"></div>
+    <button class="new" id="newCnv">+ Nouvelle conversation</button>
+  </aside>
+
+  <section class="chat">
+    <div class="stream" id="stream"></div>
+    <div class="composer">
+      <input id="input" type="text" placeholder="Décrivez un produit, un besoin, ou entrez un CustomerID…"/>
+      <button id="send">Envoyer</button>
+    </div>
+  </section>
+</main>
+
+<script>
+  let currentId = null;
+  let store = JSON.parse(localStorage.getItem("dlux_convos") || "{}");
+
+  const uid = () => Date.now().toString();
+  const $ = (s) => document.querySelector(s);
+
+  function save(){ localStorage.setItem("dlux_convos", JSON.stringify(store)); }
+
+  function ensureConversation(id=null){
+    if(!id) id = uid();
+    if(!store[id]) {
+      store[id] = { title:id, created:new Date().toISOString(), messages:[] };
+      save();
+    }
+    currentId = id;
+    renderConvos(); renderStream();
+    if (store[id].messages.length === 0){
+      bot(`👋 **Bonjour et bienvenue !** Moi c’est **DLUXBOT** 🤖 — un chatbot intelligent capable de vous recommander des produits à l’aide de votre **historique**, de vos **préférences** et de votre **contexte**.  
+**Que puis-je faire pour vous ?**`);
+      bot(`Je peux recommander par **client** (CustomerID), par **produit** (mots-clés) ou lister les articles **populaires**. Que souhaites-tu ?`);
+    }
+  }
+
+  function renderConvos(){
+    const convos = $("#convos"); convos.innerHTML = "";
+    Object.entries(store).sort((a,b)=>a[0]>b[0]?-1:1).forEach(([id,c])=>{
+      const div = document.createElement("div");
+      div.className = "convo" + (id===currentId?" active":"");
+      div.onclick = ()=>{ currentId=id; renderConvos(); renderStream(); };
+      const left = document.createElement("div");
+      left.innerHTML = `<div>${c.title}</div><small>${new Date(c.created).toLocaleString()}</small>`;
+      const del = document.createElement("button");
+      del.className="trash"; del.innerHTML="🗑️"; del.title="Supprimer";
+      del.onclick = (e)=>{ e.stopPropagation(); delete store[id]; save(); currentId=null; ensureConversation(); };
+      div.appendChild(left); div.appendChild(del);
+      convos.appendChild(div);
+    });
+  }
+
+  function renderStream(){
+    const wrap = $("#stream"); wrap.innerHTML = "";
+    (store[currentId]?.messages || []).forEach(m => addBubble(m.role, m.text, false));
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function addBubble(role, text, push=true, typing=false){
+    const wrap = $("#stream");
+    const msg = document.createElement("div");
+    msg.className = "msg " + (role==="user"?"user":"bot");
+    const avatar = document.createElement("div"); avatar.className="avatar";
+    const bubble = document.createElement("div"); bubble.className="bubble";
+    if (typing) bubble.classList.add("typing");
+    const html = DOMPurify.sanitize(marked.parse(text));
+    bubble.innerHTML = html;
+    msg.appendChild(avatar); msg.appendChild(bubble);
+    wrap.appendChild(msg); wrap.scrollTop = wrap.scrollHeight;
+    if (push){ store[currentId].messages.push({role,text}); save(); }
+    return msg;
+  }
+
+  const user = (t)=>addBubble("user", t, true);
+  const bot  = (t)=>addBubble("bot",  t, true);
+
+  async function sendMessage(val){
+    // Indicateur "DLUXBOT écrit…"
+    const typingMsg = addBubble("bot", "_DLUXBOT réfléchit…_", false, true);
+    try{
+      const res = await fetch("/ask", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ message: val })
+      });
+      if(!res.ok){
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      typingMsg.remove();
+      bot(data.response || "❌ Oups, une réponse vide a été reçue.");
+    }catch(err){
+      typingMsg.remove();
+      bot(`❌ Erreur : ${err.message || "réseau"}`);
+    }
+  }
+
+  $("#send").onclick = async ()=>{
+    const val = $("#input").value.trim();
+    if(!val) return;
+    user(val);
+    $("#input").value = "";
+    await sendMessage(val);
+  };
+
+  $("#input").addEventListener("keydown",(e)=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#send").click(); }
+  });
+
+  $("#newCnv").onclick = ()=> ensureConversation();
+  $("#exportBtn").onclick = ()=>{
+    const blob = new Blob([JSON.stringify(store,null,2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "dluxbot_conversations.json";
+    a.click();
+  };
+  $("#clearBtn").onclick = ()=>{
+    if(confirm("Supprimer toutes les conversations ?")){
+      store = {}; save(); ensureConversation();
+    }
+  };
+
+  const first = Object.keys(store)[0];
+  ensureConversation(first);
+</script>
+</body>
+</html>
